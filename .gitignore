@@ -5,14 +5,11 @@ __pycache__/
 *.so
 .Python
 env/
-build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -30,21 +27,21 @@ ENV/
 *.sqlite3
 
 # Flutter / Dart
-mobile/.dart_tool/
-mobile/.flutter-plugins
-mobile/.flutter-plugins-dependencies
-mobile/.pub-cache/
-mobile/.pub/
-mobile/build/
-mobile/coverage/
-mobile/.packages
-mobile/.metadata
-mobile/.atom/
-mobile/.buildlog/
-mobile/.history
-mobile/android/app/debug
-mobile/android/app/profile
-mobile/android/app/release
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+coverage/
+.packages
+.metadata
+.atom/
+.buildlog/
+.history
+app/debug
+app/profile
+app/release
 
 # IDEs & System
 .idea/
