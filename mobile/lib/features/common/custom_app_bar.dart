@@ -125,55 +125,91 @@ class FasalAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ),
 
-        // Persona Switcher Menu (for judges)
-        PopupMenuButton<UserRole>(
+        // Persona Switcher Menu (for judges & seamless role switching)
+        PopupMenuButton<String>(
           icon: const Icon(Icons.switch_account_outlined, color: Colors.white),
-          tooltip: loc.tr('switch_role'),
-          onSelected: (role) {
-            appState.switchRole(role);
+          tooltip: 'Switch Role / Logout',
+          onSelected: (val) {
+            if (val == 'logout') {
+              Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
+              return;
+            }
+            if (val == 'farmer') {
+              appState.switchRole(UserRole.farmer);
+              Navigator.of(context).pushNamedAndRemoveUntil('/farmer-dashboard', (r) => false);
+            } else if (val == 'expert') {
+              appState.switchRole(UserRole.expert);
+              Navigator.of(context).pushNamedAndRemoveUntil('/expert-dashboard', (r) => false);
+            } else if (val == 'officer') {
+              appState.switchRole(UserRole.officer);
+              Navigator.of(context).pushNamedAndRemoveUntil('/officer-dashboard', (r) => false);
+            } else if (val == 'admin') {
+              appState.switchRole(UserRole.admin);
+              Navigator.of(context).pushNamedAndRemoveUntil('/admin-dashboard', (r) => false);
+            }
           },
           itemBuilder: (ctx) => [
             PopupMenuItem(
-              value: UserRole.farmer,
+              value: 'farmer',
               child: Row(
                 children: [
-                  Icon(Icons.person, color: appState.currentRole == UserRole.farmer ? AppColors.forest : Colors.grey),
+                  Icon(Icons.person, color: appState.currentRole == UserRole.farmer ? AppColors.primaryGreen : Colors.grey),
                   const SizedBox(width: 8),
-                  Text('Farmer (${AppLocalizations.of(ctx).tr('farmer')})'),
+                  Text('Farmer (किसान)', style: TextStyle(fontWeight: appState.currentRole == UserRole.farmer ? FontWeight.bold : FontWeight.normal)),
                 ],
               ),
             ),
             PopupMenuItem(
-              value: UserRole.expert,
+              value: 'expert',
               child: Row(
                 children: [
-                  Icon(Icons.biotech, color: appState.currentRole == UserRole.expert ? AppColors.forest : Colors.grey),
+                  Icon(Icons.biotech, color: appState.currentRole == UserRole.expert ? AppColors.primaryGreen : Colors.grey),
                   const SizedBox(width: 8),
-                  Text('Expert (${AppLocalizations.of(ctx).tr('expert')})'),
+                  Text('Doctor/Expert (कृषि डॉक्टर)', style: TextStyle(fontWeight: appState.currentRole == UserRole.expert ? FontWeight.bold : FontWeight.normal)),
                 ],
               ),
             ),
             PopupMenuItem(
-              value: UserRole.officer,
+              value: 'officer',
               child: Row(
                 children: [
-                  Icon(Icons.dashboard, color: appState.currentRole == UserRole.officer ? AppColors.forest : Colors.grey),
+                  Icon(Icons.dashboard, color: appState.currentRole == UserRole.officer ? AppColors.primaryGreen : Colors.grey),
                   const SizedBox(width: 8),
-                  Text('Officer (${AppLocalizations.of(ctx).tr('officer')})'),
+                  Text('Officer (कृषि अधिकारी)', style: TextStyle(fontWeight: appState.currentRole == UserRole.officer ? FontWeight.bold : FontWeight.normal)),
                 ],
               ),
             ),
             PopupMenuItem(
-              value: UserRole.admin,
+              value: 'admin',
               child: Row(
                 children: [
-                  Icon(Icons.admin_panel_settings, color: appState.currentRole == UserRole.admin ? AppColors.forest : Colors.grey),
+                  Icon(Icons.admin_panel_settings, color: appState.currentRole == UserRole.admin ? AppColors.primaryGreen : Colors.grey),
                   const SizedBox(width: 8),
-                  Text('Admin (${AppLocalizations.of(ctx).tr('admin')})'),
+                  Text('Admin (व्यवस्थापक)', style: TextStyle(fontWeight: appState.currentRole == UserRole.admin ? FontWeight.bold : FontWeight.normal)),
+                ],
+              ),
+            ),
+            const PopupMenuDivider(),
+            const PopupMenuItem(
+              value: 'logout',
+              child: Row(
+                children: [
+                  Icon(Icons.logout, color: AppColors.dangerRed, size: 18),
+                  SizedBox(width: 8),
+                  Text('Logout (लॉगआउट)', style: TextStyle(color: AppColors.dangerRed, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
           ],
+        ),
+
+        // 1-Tap Quick Logout Icon
+        IconButton(
+          icon: const Icon(Icons.logout, color: Colors.white, size: 20),
+          tooltip: 'Logout',
+          onPressed: () {
+            Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
+          },
         ),
 
         if (actions != null) ...actions!,

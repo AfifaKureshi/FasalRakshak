@@ -23,6 +23,41 @@ class _CheckCropHealthScreenState extends State<CheckCropHealthScreen> {
   bool _forceLowConfidence = false;
   final ImagePicker _picker = ImagePicker();
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = Provider.of<AppState>(context, listen: false);
+      appState.setPickedImage(null, null);
+      _retrieveLostData();
+    });
+  }
+
+  Future<void> _retrieveLostData() async {
+    try {
+      final LostDataResponse response = await _picker.retrieveLostData();
+      if (response.isEmpty || response.file == null) return;
+      final file = response.file!;
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+      final appState = Provider.of<AppState>(context, listen: false);
+      appState.setPickedImage(bytes, file.name);
+      setState(() {
+        _selectedSampleName = file.name;
+        _forceLowConfidence = false;
+      });
+    } catch (_) {}
+  }
+
+  void _clearImage() {
+    final appState = Provider.of<AppState>(context, listen: false);
+    appState.setPickedImage(null, null);
+    setState(() {
+      _selectedSampleName = 'Tomato Leaf Sample';
+      _forceLowConfidence = false;
+    });
+  }
+
   final List<Map<String, dynamic>> _quickSamplePresets = [
     {
       'title': 'Tomato Blight (Spot Pattern)',
@@ -202,6 +237,21 @@ class _CheckCropHealthScreenState extends State<CheckCropHealthScreen> {
                                 Image.memory(
                                   appState.pickedImageBytes!,
                                   fit: BoxFit.cover,
+                                ),
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: InkWell(
+                                    onTap: _clearImage,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.65),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.close, color: Colors.white, size: 16),
+                                    ),
+                                  ),
                                 ),
                                 Positioned(
                                   bottom: 8,

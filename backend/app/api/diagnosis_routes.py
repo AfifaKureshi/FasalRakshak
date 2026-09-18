@@ -134,6 +134,7 @@ def analyze_crop(
         },
         "weather": weather,
         "is_mismatch": ai_result.get("is_mismatch", False),
+        "is_not_leaf": ai_result.get("is_not_leaf", False),
         "suggested_crop": ai_result.get("suggested_crop"),
         "top_predictions": ai_result.get("top_predictions", [])
     }

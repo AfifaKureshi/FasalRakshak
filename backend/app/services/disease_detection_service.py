@@ -120,24 +120,49 @@ class DiseaseDetectionService:
                 logger.info(f"Image validation triggered: {ive.code} - {ive.message}")
                 suggested_crop = ive.context.get("suggested_crop")
                 is_mismatch = (ive.code == "crop_mismatch")
-                disease_title = f"Crop Mismatch: Likely {suggested_crop}" if is_mismatch else f"Quality Alert: {ive.code.replace('_', ' ').title()}"
+                is_not_leaf = (ive.code in ("non_leaf_suspected", "person_detected", "too_dark", "too_bright"))
+
+                if is_not_leaf:
+                    disease_title = "Invalid Image: Not a Crop Leaf" if ive.code == "non_leaf_suspected" else f"Quality Alert: {ive.code.replace('_', ' ').title()}"
+                    rec_msg = (
+                        "The uploaded photo does not appear to be a crop leaf. FasalRakshak is specialized for diagnosing crop foliage. "
+                        "Please upload a clear photograph of a crop leaf from our supported crops (Tomato, Potato, Corn, Cotton, Apple, Grape, etc.)."
+                    )
+                    return {
+                        "crop": crop_hint,
+                        "disease": disease_title,
+                        "confidence": 0.0,
+                        "severity": "Invalid",
+                        "explanation": ive.message,
+                        "recommendations": rec_msg,
+                        "prevention": "Ensure good natural lighting and focus exclusively on the leaf blade.",
+                        "model_used": "FasalRakshak Image Quality & Leaf Guard",
+                        "requires_expert_review": False,
+                        "expert_status": "NOT_REQUIRED",
+                        "is_mismatch": False,
+                        "is_not_leaf": True,
+                        "suggested_crop": None,
+                        "top_predictions": []
+                    }
+
+                disease_title = f"Crop Mismatch: Likely {suggested_crop}"
                 rec_msg = (
                     f"The uploaded photo resembles a {suggested_crop} leaf rather than {crop_hint}. "
                     f"Please select '{suggested_crop}' or take a new photo of your {crop_hint} leaf."
-                    if is_mismatch else ive.message
                 )
                 return {
                     "crop": crop_hint,
                     "disease": disease_title,
-                    "confidence": 0.88 if is_mismatch else 0.40,
-                    "severity": "Moderate" if is_mismatch else "Warning",
+                    "confidence": 0.88,
+                    "severity": "Moderate",
                     "explanation": ive.message,
                     "recommendations": rec_msg,
                     "prevention": "Ensure the selected crop matches the leaf photo and lighting is adequate.",
                     "model_used": "EfficientNet-B0 (Crop Mismatch / Quality Guard)",
                     "requires_expert_review": True,
                     "expert_status": "PENDING",
-                    "is_mismatch": is_mismatch,
+                    "is_mismatch": True,
+                    "is_not_leaf": False,
                     "suggested_crop": suggested_crop,
                     "top_predictions": []
                 }

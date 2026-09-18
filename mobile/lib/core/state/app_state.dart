@@ -1,7 +1,5 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../constants/app_constants.dart';
 import '../../services/sync/sync_service.dart';
 import '../../services/ai/disease_detection_service.dart';

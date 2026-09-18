@@ -16,15 +16,39 @@ class _VoiceCommandSheetState extends State<VoiceCommandSheet> {
   String _statusText = 'Tap mic or pick a sample command';
 
   void _triggerCommand(String text) {
+    final intent = VoiceCommandService.instance.parseCommand(text);
+    String targetName = 'Crop Doctor';
+    switch (intent) {
+      case VoiceIntent.checkCropHealth:
+        targetName = 'Crop Doctor / फसल जांच';
+        break;
+      case VoiceIntent.showAlerts:
+        targetName = 'Alerts / अलर्ट्स';
+        break;
+      case VoiceIntent.showWeather:
+        targetName = 'Agro Weather / मौसम';
+        break;
+      case VoiceIntent.showRisk:
+        targetName = 'Farm Risk / खेत जोखिम';
+        break;
+      case VoiceIntent.showFarm:
+        targetName = 'My Farm / मेरा खेत';
+        break;
+      case VoiceIntent.showPestTrap:
+        targetName = 'Pest Trap / कीट जाल';
+        break;
+      case VoiceIntent.unknown:
+        targetName = 'Command Not Recognized';
+        break;
+    }
+
     setState(() {
       _recognizedText = text;
       _isListening = false;
-      _statusText = 'Processing intent...';
+      _statusText = '✓ Recognized! Navigating to: $targetName';
     });
 
-    final intent = VoiceCommandService.instance.parseCommand(text);
-
-    Future.delayed(const Duration(milliseconds: 600), () {
+    Future.delayed(const Duration(milliseconds: 1200), () {
       if (!mounted) return;
       Navigator.of(context).pop();
 
@@ -49,7 +73,7 @@ class _VoiceCommandSheetState extends State<VoiceCommandSheet> {
           break;
         case VoiceIntent.unknown:
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Command recognized: "$text"')),
+            SnackBar(content: Text('Unrecognized command: "$text". Please pick from samples below.')),
           );
           break;
       }
@@ -57,14 +81,26 @@ class _VoiceCommandSheetState extends State<VoiceCommandSheet> {
   }
 
   void _simulateListening() {
+    if (_isListening) {
+      setState(() {
+        _isListening = false;
+        _statusText = 'Listening stopped. Tap a sample below or tap mic again.';
+      });
+      return;
+    }
+
     setState(() {
       _isListening = true;
-      _statusText = 'Listening... (Speak now)';
+      _statusText = 'Listening... Speak in Hindi, Gujarati, Marathi or English';
     });
 
-    Future.delayed(const Duration(milliseconds: 1400), () {
-      if (!mounted) return;
-      _triggerCommand('Check my crop health');
+    // Provide helpful prompts if mic tapped
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (!mounted || !_isListening) return;
+      setState(() {
+        _statusText = 'Tap any sample command below to test voice navigation.';
+        _isListening = false;
+      });
     });
   }
 
@@ -180,6 +216,10 @@ class _VoiceCommandSheetState extends State<VoiceCommandSheet> {
               ActionChip(
                 label: const Text('પાકનું આરોગ્ય તપાસો'),
                 onPressed: () => _triggerCommand('પાકનું આરોગ્ય તપાસો'),
+              ),
+              ActionChip(
+                label: const Text('पिकाचे आरोग्य तपासा'),
+                onPressed: () => _triggerCommand('पिकाचे आरोग्य तपासा'),
               ),
               ActionChip(
                 label: const Text('Show my alerts'),

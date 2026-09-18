@@ -17,7 +17,8 @@ class DiagnosisResultScreen extends StatelessWidget {
 
     final confidencePct = ((diag?.confidence ?? 0.85) * 100).toInt();
     final isMismatch = diag?.isMismatch == true;
-    final isLowConfidence = !isMismatch && (diag?.confidence ?? 0.85) < 0.70;
+    final isNotLeaf = diag?.isNotLeaf == true;
+    final isLowConfidence = !isMismatch && !isNotLeaf && (diag?.confidence ?? 0.85) < 0.70;
 
     return Scaffold(
       appBar: FasalAppBar(
@@ -28,16 +29,16 @@ class DiagnosisResultScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Status Alert Card (Mismatch, Doctor Review, or Verified)
+            // Status Alert Card (Not-Leaf, Mismatch, Doctor Review, or Verified)
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isMismatch
+                color: (isNotLeaf || isMismatch)
                     ? const Color(0xFFFEF2F2)
                     : (isLowConfidence ? const Color(0xFFFEF3C7) : AppColors.lightMint),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isMismatch
+                  color: (isNotLeaf || isMismatch)
                       ? AppColors.dangerRed
                       : (isLowConfidence ? AppColors.warningAmber : AppColors.primaryGreen),
                   width: 1.5,
@@ -46,10 +47,12 @@ class DiagnosisResultScreen extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(
-                    isMismatch
-                        ? Icons.swap_horiz_rounded
-                        : (isLowConfidence ? Icons.medical_services_outlined : Icons.verified_outlined),
-                    color: isMismatch
+                    isNotLeaf
+                        ? Icons.hide_image_outlined
+                        : (isMismatch
+                            ? Icons.swap_horiz_rounded
+                            : (isLowConfidence ? Icons.medical_services_outlined : Icons.verified_outlined)),
+                    color: (isNotLeaf || isMismatch)
                         ? AppColors.dangerRed
                         : (isLowConfidence ? AppColors.warningAmber : AppColors.primaryGreen),
                     size: 26,
@@ -60,24 +63,28 @@ class DiagnosisResultScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isMismatch
-                              ? 'Crop Mismatch Alert'
-                              : (isLowConfidence ? loc.tr('doctor_review_tag') : 'AI Verified Result'),
+                          isNotLeaf
+                              ? 'Not a Crop Leaf Detected'
+                              : (isMismatch
+                                  ? 'Crop Mismatch Alert'
+                                  : (isLowConfidence ? loc.tr('doctor_review_tag') : 'AI Verified Result')),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: isMismatch
+                            color: (isNotLeaf || isMismatch)
                                 ? AppColors.dangerRed
                                 : (isLowConfidence ? const Color(0xFF92400E) : AppColors.primaryGreen),
                           ),
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          isMismatch
-                              ? 'Leaf appears to match ${diag?.suggestedCrop ?? "another crop"} rather than ${diag?.crop}. Check your crop selection.'
-                              : (isLowConfidence
-                                  ? 'Confidence is $confidencePct%. A crop specialist doctor has been alerted to double-check your leaf.'
-                                  : 'High confidence check ($confidencePct%). Analysis complete.'),
+                          isNotLeaf
+                              ? 'The photo does not appear to be a plant leaf. Please upload a clear photo of a crop leaf.'
+                              : (isMismatch
+                                  ? 'Leaf appears to match ${diag?.suggestedCrop ?? "another crop"} rather than ${diag?.crop}. Check your crop selection.'
+                                  : (isLowConfidence
+                                      ? 'Confidence is $confidencePct%. A crop specialist doctor has been alerted to double-check your leaf.'
+                                      : 'High confidence check ($confidencePct%). Analysis complete.')),
                           style: const TextStyle(fontSize: 12, color: AppColors.charcoal),
                         ),
                       ],

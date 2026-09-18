@@ -78,19 +78,34 @@ def _face_detector():
 def inspect_image(image):
     """Reject obvious bad inputs; return measurements for accepted images."""
     if not HAS_CV2:
-        # Pillow / NumPy lightweight quality inspection fallback
         preview = image.copy()
         preview.thumbnail((256, 256))
-        stat = ImageStat.Stat(preview)
-        mean_brightness = sum(stat.mean[:3]) / 3.0
+        arr = np.asarray(preview.convert("RGB"), dtype=np.float32)
+        mean_brightness = float(np.mean(arr))
         if mean_brightness < 20:
             raise ImageValidationError("too_dark", "The photo is too dark. Retake it in natural light.")
-        if mean_brightness > 245:
+        if mean_brightness > 248:
             raise ImageValidationError("too_bright", "The photo is overexposed. Avoid flash and retake it.")
+
+        # Plant foliage color mask (greens, yellow-greens, chlorotic yellow, brown lesions)
+        r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
+        is_green = (g > (b + 8)) & (g > (r - 30)) & (g > 35)
+        is_yellow = (r > 70) & (g > 65) & (b < ((r + g) / 2.0 - 15))
+        is_brown = (r > 50) & (g > 35) & (b < 85) & (r > (b + 12))
+
+        plant_mask = is_green | is_yellow | is_brown
+        plant_fraction = float(np.mean(plant_mask))
+
+        if plant_fraction < float(os.getenv("LEAF_COLOR_MIN_FRACTION", "0.07")):
+            raise ImageValidationError(
+                "non_leaf_suspected",
+                "The uploaded image does not appear to be a crop leaf. Please upload a clear photo of a plant leaf."
+            )
+
         return {
-            "screening": "pillow_heuristic",
+            "screening": "pillow_numpy_guard",
             "sharpness": 50.0,
-            "plant_color_fraction": 0.45,
+            "plant_color_fraction": round(plant_fraction, 3),
             "warnings": [],
             "width": image.width,
             "height": image.height,

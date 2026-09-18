@@ -16,6 +16,7 @@ class DiseaseResult {
   final bool requiresExpertReview;
   final bool isOfflineResult;
   final bool isMismatch;
+  final bool isNotLeaf;
   final String? suggestedCrop;
   final Map<String, dynamic>? rawBackendRisk;
   final Map<String, dynamic>? rawBackendWeather;
@@ -33,6 +34,7 @@ class DiseaseResult {
     required this.requiresExpertReview,
     this.isOfflineResult = false,
     this.isMismatch = false,
+    this.isNotLeaf = false,
     this.suggestedCrop,
     this.rawBackendRisk,
     this.rawBackendWeather,
@@ -52,6 +54,7 @@ class DiseaseResult {
       'requires_expert_review': requiresExpertReview,
       'is_offline_result': isOfflineResult,
       'is_mismatch': isMismatch,
+      'is_not_leaf': isNotLeaf,
       'suggested_crop': suggestedCrop,
     };
   }
@@ -69,6 +72,7 @@ class DiseaseResult {
       requiresExpertReview: map['requires_expert_review'] ?? false,
       isOfflineResult: map['is_offline_result'] ?? false,
       isMismatch: map['is_mismatch'] ?? false,
+      isNotLeaf: map['is_not_leaf'] ?? false,
       suggestedCrop: map['suggested_crop'],
     );
   }
@@ -122,6 +126,7 @@ class ApiDiseaseDetectionService implements IDiseaseDetectionService {
         final riskMap = jsonMap['risk_assessment'] as Map<String, dynamic>?;
         final weatherMap = jsonMap['weather'] as Map<String, dynamic>?;
         final isMismatch = jsonMap['is_mismatch'] == true;
+        final isNotLeaf = jsonMap['is_not_leaf'] == true;
         final suggestedCrop = jsonMap['suggested_crop'] as String?;
         final topPredictions = jsonMap['top_predictions'] as List<dynamic>?;
 
@@ -137,6 +142,7 @@ class ApiDiseaseDetectionService implements IDiseaseDetectionService {
           requiresExpertReview: diagMap['requires_expert_review'] == true,
           isOfflineResult: false,
           isMismatch: isMismatch,
+          isNotLeaf: isNotLeaf,
           suggestedCrop: suggestedCrop,
           rawBackendRisk: riskMap,
           rawBackendWeather: weatherMap,
