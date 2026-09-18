@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
@@ -8,6 +8,37 @@ from app.core.database import get_db
 from app.models.user import User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False)
+
+def get_current_user_or_demo(token: Optional[str] = Depends(oauth2_scheme_optional), db: Session = Depends(get_db)) -> User:
+    if token:
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            user_id: str = payload.get("sub")
+            if user_id:
+                user = db.query(User).filter(User.id == int(user_id)).first()
+                if user and user.is_active:
+                    return user
+        except Exception:
+            pass
+    # Demo user fallback for seamless hackathon testing & mobile offline-first
+    demo_farmer = db.query(User).filter(User.role == UserRole.FARMER).first()
+    if not demo_farmer:
+        demo_farmer = db.query(User).first()
+    if not demo_farmer:
+        demo_farmer = User(
+            full_name="Ramesh Patel",
+            email="farmer@fasalrakshak.com",
+            role=UserRole.FARMER,
+            state="Gujarat",
+            district="Bhavnagar",
+            is_active=True,
+            is_verified=True
+        )
+        db.add(demo_farmer)
+        db.commit()
+        db.refresh(demo_farmer)
+    return demo_farmer
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     credentials_exception = HTTPException(

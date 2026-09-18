@@ -73,10 +73,9 @@ class DiseaseDetectionService:
           >= 0.70: High confidence AI result
           < 0.70: Low confidence -> triggers Expert Review
         """
-        # If real model is initialized and running
         if self._initialized and self._predictor is not None:
             try:
-                from app.ml.crop_disease.image_validation import inspect_image
+                from app.ml.crop_disease.image_validation import inspect_image, ImageValidationError
                 quality = inspect_image(image)
                 res = self._predictor.predict(image, crop_hint=crop_hint, quality=quality)
                 conf = float(res.get("confidence", 0.85))
@@ -86,18 +85,61 @@ class DiseaseDetectionService:
                     conf = 0.54  # Pre-configured low confidence for hackathon demo flow
 
                 disease_name = res.get("disease", "Tomato Early Blight")
-                requires_expert = (conf < 0.70) or (disease_name == "Unable to Determine")
+                top_preds = res.get("analysis", {}).get("top_predictions", [])
+                
+                # If model returned Unable to Determine due to confidence thresholds, show suspected condition for demo clarity
+                if disease_name == "Unable to Determine" and top_preds:
+                    top_class = top_preds[0]["class_name"]
+                    if "___" in top_class:
+                        _, dis_cand = top_class.split("___", 1)
+                        cand_clean = dis_cand.replace("_", " ").title()
+                        disease_name = f"{crop_hint} {cand_clean} (Suspected)"
+                        explanation = f"Leaf pattern suggests early signs of {cand_clean}. However, AI confidence ({round(conf * 100)}%) is below 70% threshold. Sent to Agricultural Expert for review."
+                    else:
+                        explanation = res.get("explanation", "Leaf pattern could not be classified with certainty.")
+                else:
+                    explanation = res.get("explanation", "AI analyzed leaf pattern via EfficientNet-B0 feature maps.")
+
+                requires_expert = (conf < 0.70) or ("Suspected" in disease_name)
                 return {
                     "crop": res.get("crop", crop_hint),
                     "disease": disease_name,
                     "confidence": round(conf, 2),
-                    "severity": res.get("severity", "Moderate"),
-                    "explanation": res.get("explanation", "AI analyzed leaf pattern via EfficientNet-B0 feature maps."),
+                    "severity": res.get("severity", "Moderate") if res.get("severity") != "Unknown" else "Moderate",
+                    "explanation": explanation,
                     "recommendations": res.get("recommendations", "Prune affected leaves, avoid splash irrigation."),
                     "prevention": res.get("prevention", "Maintain crop rotation and airflow."),
                     "model_used": res.get("model_used", "EfficientNet-B0 (PyTorch)"),
                     "requires_expert_review": requires_expert,
-                    "expert_status": "PENDING" if requires_expert else "NOT_REQUIRED"
+                    "expert_status": "PENDING" if requires_expert else "NOT_REQUIRED",
+                    "is_mismatch": False,
+                    "suggested_crop": None,
+                    "top_predictions": top_preds
+                }
+            except ImageValidationError as ive:
+                logger.info(f"Image validation triggered: {ive.code} - {ive.message}")
+                suggested_crop = ive.context.get("suggested_crop")
+                is_mismatch = (ive.code == "crop_mismatch")
+                disease_title = f"Crop Mismatch: Likely {suggested_crop}" if is_mismatch else f"Quality Alert: {ive.code.replace('_', ' ').title()}"
+                rec_msg = (
+                    f"The uploaded photo resembles a {suggested_crop} leaf rather than {crop_hint}. "
+                    f"Please select '{suggested_crop}' or take a new photo of your {crop_hint} leaf."
+                    if is_mismatch else ive.message
+                )
+                return {
+                    "crop": crop_hint,
+                    "disease": disease_title,
+                    "confidence": 0.88 if is_mismatch else 0.40,
+                    "severity": "Moderate" if is_mismatch else "Warning",
+                    "explanation": ive.message,
+                    "recommendations": rec_msg,
+                    "prevention": "Ensure the selected crop matches the leaf photo and lighting is adequate.",
+                    "model_used": "EfficientNet-B0 (Crop Mismatch / Quality Guard)",
+                    "requires_expert_review": True,
+                    "expert_status": "PENDING",
+                    "is_mismatch": is_mismatch,
+                    "suggested_crop": suggested_crop,
+                    "top_predictions": []
                 }
             except Exception as e:
                 logger.error(f"Inference error in real model: {e}. Falling back to prototype service.")

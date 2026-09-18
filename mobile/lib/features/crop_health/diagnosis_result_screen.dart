@@ -16,7 +16,8 @@ class DiagnosisResultScreen extends StatelessWidget {
     final risk = appState.currentRisk;
 
     final confidencePct = ((diag?.confidence ?? 0.85) * 100).toInt();
-    final isLowConfidence = (diag?.confidence ?? 0.85) < 0.70;
+    final isMismatch = diag?.isMismatch == true;
+    final isLowConfidence = !isMismatch && (diag?.confidence ?? 0.85) < 0.70;
 
     return Scaffold(
       appBar: FasalAppBar(
@@ -27,22 +28,30 @@ class DiagnosisResultScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Status Alert Card
+            // Status Alert Card (Mismatch, Doctor Review, or Verified)
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isLowConfidence ? const Color(0xFFFEF3C7) : AppColors.lightMint,
+                color: isMismatch
+                    ? const Color(0xFFFEF2F2)
+                    : (isLowConfidence ? const Color(0xFFFEF3C7) : AppColors.lightMint),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isLowConfidence ? AppColors.warningAmber : AppColors.primaryGreen,
+                  color: isMismatch
+                      ? AppColors.dangerRed
+                      : (isLowConfidence ? AppColors.warningAmber : AppColors.primaryGreen),
                   width: 1.5,
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
-                    isLowConfidence ? Icons.medical_services_outlined : Icons.verified_outlined,
-                    color: isLowConfidence ? AppColors.warningAmber : AppColors.primaryGreen,
+                    isMismatch
+                        ? Icons.swap_horiz_rounded
+                        : (isLowConfidence ? Icons.medical_services_outlined : Icons.verified_outlined),
+                    color: isMismatch
+                        ? AppColors.dangerRed
+                        : (isLowConfidence ? AppColors.warningAmber : AppColors.primaryGreen),
                     size: 26,
                   ),
                   const SizedBox(width: 12),
@@ -51,20 +60,24 @@ class DiagnosisResultScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isLowConfidence
-                              ? loc.tr('doctor_review_tag')
-                              : 'AI Verified Result',
+                          isMismatch
+                              ? 'Crop Mismatch Alert'
+                              : (isLowConfidence ? loc.tr('doctor_review_tag') : 'AI Verified Result'),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: isLowConfidence ? const Color(0xFF92400E) : AppColors.primaryGreen,
+                            color: isMismatch
+                                ? AppColors.dangerRed
+                                : (isLowConfidence ? const Color(0xFF92400E) : AppColors.primaryGreen),
                           ),
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          isLowConfidence
-                              ? 'Confidence is $confidencePct%. A crop specialist doctor has been alerted to double-check your leaf.'
-                              : 'High confidence check ($confidencePct%). Analysis complete.',
+                          isMismatch
+                              ? 'Leaf appears to match ${diag?.suggestedCrop ?? "another crop"} rather than ${diag?.crop}. Check your crop selection.'
+                              : (isLowConfidence
+                                  ? 'Confidence is $confidencePct%. A crop specialist doctor has been alerted to double-check your leaf.'
+                                  : 'High confidence check ($confidencePct%). Analysis complete.'),
                           style: const TextStyle(fontSize: 12, color: AppColors.charcoal),
                         ),
                       ],
@@ -101,21 +114,51 @@ class DiagnosisResultScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.lightMint,
+                            color: isMismatch ? const Color(0xFFFEE2E2) : AppColors.lightMint,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            '${diag?.crop ?? "Tomato"} Plant',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                            isMismatch
+                                ? 'Selected: ${diag?.crop ?? "Tomato"}'
+                                : '${diag?.crop ?? "Tomato"} Plant',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isMismatch ? AppColors.dangerRed : AppColors.primaryGreen,
+                            ),
                           ),
                         ),
-                        Text(
-                          'Confidence: $confidencePct%',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: isLowConfidence ? AppColors.warningAmber : AppColors.primaryGreen,
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: (diag?.isOfflineResult ?? false)
+                                    ? Colors.orange
+                                    : Colors.green,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              (diag?.isOfflineResult ?? false)
+                                  ? 'On-Device'
+                                  : 'PyTorch B0',
+                              style: const TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Confidence: $confidencePct%',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isMismatch
+                                    ? AppColors.dangerRed
+                                    : (isLowConfidence ? AppColors.warningAmber : AppColors.primaryGreen),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

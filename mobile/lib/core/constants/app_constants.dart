@@ -8,9 +8,9 @@ class AppConstants {
   // Backend API Base URL (Auto-detects host for phone access or defaults to local network)
   static String get defaultApiBaseUrl {
     if (kIsWeb) {
-      final host = Uri.base.host;
-      if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
-        return 'http://$host:8000/api/v1';
+      final origin = Uri.base.origin;
+      if (origin.isNotEmpty && !origin.startsWith('null')) {
+        return '$origin/api/v1';
       }
     }
     return 'http://10.14.140.107:8000/api/v1';

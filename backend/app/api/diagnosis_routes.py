@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_current_user_or_demo
 from app.models.user import User
 from app.models.farm import Farm
 from app.models.diagnosis import CropDiagnosis
@@ -28,9 +28,11 @@ def analyze_crop(
     crop_name: str = Form("Tomato"),
     force_low_confidence: bool = Form(False),
     file: Optional[UploadFile] = File(None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_or_demo),
     db: Session = Depends(get_db)
 ):
+    if current_user is None:
+        current_user = get_current_user_or_demo(None, db)
     farm = db.query(Farm).filter(Farm.user_id == current_user.id).first()
     if not farm:
         farm = Farm(user_id=current_user.id, farm_name="Primary Crop Plot", crop=crop_name)
@@ -130,11 +132,14 @@ def analyze_crop(
             "advisory_summary": risk_assessment.advisory_summary,
             "created_at": risk_assessment.created_at
         },
-        "weather": weather
+        "weather": weather,
+        "is_mismatch": ai_result.get("is_mismatch", False),
+        "suggested_crop": ai_result.get("suggested_crop"),
+        "top_predictions": ai_result.get("top_predictions", [])
     }
 
 @router.get("/history", response_model=List[DiagnosisOut])
-def get_diagnosis_history(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_diagnosis_history(current_user: User = Depends(get_current_user_or_demo), db: Session = Depends(get_db)):
     farm = db.query(Farm).filter(Farm.user_id == current_user.id).first()
     if not farm:
         return []

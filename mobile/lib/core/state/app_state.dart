@@ -240,33 +240,64 @@ class AppState extends ChangeNotifier {
     required String cropHint,
     bool forceLowConfidence = false,
   }) async {
-    final isOffline = SyncService.instance.isOfflineMode;
+    final isSyncOffline = SyncService.instance.isOfflineMode;
 
-    // Use Mock/On-Device AI service
-    final result = await MockDiseaseDetectionService().analyzeImage(
-      imagePath: 'demo_leaf_image.png',
+    IDiseaseDetectionService service;
+    if (isSyncOffline) {
+      service = MockDiseaseDetectionService();
+    } else {
+      service = ApiDiseaseDetectionService();
+    }
+
+    final result = await service.analyzeImage(
+      imagePath: 'leaf.jpg',
+      imageBytes: _pickedImageBytes,
+      imageName: _pickedImageName,
       cropHint: cropHint,
       forceLowConfidence: forceLowConfidence,
     );
 
     _currentDiagnosis = result;
 
-    // Compute multi-factor risk
-    _currentRisk = RiskAssessmentService.instance.evaluate(
-      disease: result.disease,
-      severity: result.severity,
-      confidence: result.confidence,
-      humidity: _weather.humidityPct,
-      rainChance: _weather.rainChancePct,
-      soilMoisture: _soilMoisture,
-      pestCount: 18,
-    );
+    // Use backend multi-factor risk assessment if returned, else compute locally
+    if (result.rawBackendRisk != null) {
+      try {
+        _currentRisk = RiskAssessmentResult.fromMap(result.rawBackendRisk!);
+      } catch (e) {
+        _currentRisk = RiskAssessmentService.instance.evaluate(
+          disease: result.disease,
+          severity: result.severity,
+          confidence: result.confidence,
+          humidity: _weather.humidityPct,
+          rainChance: _weather.rainChancePct,
+          soilMoisture: _soilMoisture,
+          pestCount: 18,
+        );
+      }
+    } else {
+      _currentRisk = RiskAssessmentService.instance.evaluate(
+        disease: result.disease,
+        severity: result.severity,
+        confidence: result.confidence,
+        humidity: _weather.humidityPct,
+        rainChance: _weather.rainChancePct,
+        soilMoisture: _soilMoisture,
+        pestCount: 18,
+      );
+    }
+
+    // Update live weather if returned by backend
+    if (result.rawBackendWeather != null) {
+      try {
+        _weather = WeatherData.fromMap(result.rawBackendWeather!);
+      } catch (_) {}
+    }
 
     // Save locally
     await LocalStorageService.instance.saveDiagnosisLocally(result.toMap());
 
     // Queue sync operation if offline
-    if (isOffline) {
+    if (result.isOfflineResult || isSyncOffline) {
       await LocalStorageService.instance.addPendingSyncItem(
         entityType: 'diagnosis',
         entityId: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -276,13 +307,28 @@ class AppState extends ChangeNotifier {
       await SyncService.instance.refreshPendingCount();
     }
 
+    // Add alert if crop mismatch detected
+    if (result.isMismatch) {
+      _alerts.insert(0, {
+        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'type': 'CROP_MISMATCH',
+        'title': 'Crop Mismatch Alert',
+        'message':
+            'Leaf resembles ${result.suggestedCrop} rather than $cropHint. Check your crop selection.',
+        'severity': 'HIGH',
+        'date': 'Just now',
+      });
+    }
+
     _diagnosisHistory.insert(0, {
       'date': 'Today',
       'crop': result.crop,
       'disease': result.disease,
       'confidence': '${(result.confidence * 100).toStringAsFixed(0)}%',
-      'risk': _currentRisk!.riskLevel,
-      'status': result.requiresExpertReview ? 'Under Expert Review' : 'AI Verified',
+      'risk': _currentRisk?.riskLevel ?? 'MODERATE',
+      'status': result.isMismatch
+          ? 'Crop Mismatch'
+          : (result.requiresExpertReview ? 'Under Expert Review' : 'AI Verified'),
     });
 
     notifyListeners();
