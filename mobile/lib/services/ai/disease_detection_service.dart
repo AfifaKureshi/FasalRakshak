@@ -177,6 +177,51 @@ class MockDiseaseDetectionService implements IDiseaseDetectionService {
     // Simulate neural network latency
     await Future.delayed(const Duration(milliseconds: 600));
 
+    if (imageBytes == null || imageBytes.isEmpty) {
+      return DiseaseResult(
+        crop: cropHint,
+        disease: 'No Image Provided',
+        confidence: 0.0,
+        severity: 'Invalid',
+        explanation: 'No photograph was captured or uploaded for AI analysis.',
+        recommendations: 'Please capture or upload a clear photo of a crop leaf.',
+        prevention: 'Capture leaves in clear daylight.',
+        modelVersion: 'FasalRakshak Leaf Guard',
+        requiresExpertReview: false,
+        isOfflineResult: true,
+        isNotLeaf: true,
+      );
+    }
+
+    final lowerName = (imageName ?? '').toLowerCase();
+    final isLikelyNonLeaf = lowerName.contains('car') ||
+        lowerName.contains('face') ||
+        lowerName.contains('person') ||
+        lowerName.contains('dog') ||
+        lowerName.contains('cat') ||
+        lowerName.contains('laptop') ||
+        lowerName.contains('screen') ||
+        lowerName.contains('desk') ||
+        lowerName.contains('shoe') ||
+        lowerName.contains('not_leaf') ||
+        lowerName.contains('non_leaf');
+
+    if (isLikelyNonLeaf) {
+      return DiseaseResult(
+        crop: cropHint,
+        disease: 'Invalid Image: Not a Crop Leaf',
+        confidence: 0.0,
+        severity: 'Invalid',
+        explanation: 'The uploaded image does not contain recognizable crop leaf foliage in our agricultural dataset.',
+        recommendations: 'Please upload a clear photograph of an actual plant leaf (Tomato, Potato, Corn, Cotton, Apple, etc.).',
+        prevention: 'Ensure proper lighting and focus directly on the leaf blade.',
+        modelVersion: 'FasalRakshak Image Quality & Leaf Guard',
+        requiresExpertReview: false,
+        isOfflineResult: true,
+        isNotLeaf: true,
+      );
+    }
+
     if (forceLowConfidence) {
       return DiseaseResult(
         crop: cropHint,

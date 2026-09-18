@@ -87,16 +87,35 @@ class DiseaseDetectionService:
                 disease_name = res.get("disease", "Tomato Early Blight")
                 top_preds = res.get("analysis", {}).get("top_predictions", [])
                 
-                # If model returned Unable to Determine due to confidence thresholds, show suspected condition for demo clarity
-                if disease_name == "Unable to Determine" and top_preds:
-                    top_class = top_preds[0]["class_name"]
-                    if "___" in top_class:
-                        _, dis_cand = top_class.split("___", 1)
-                        cand_clean = dis_cand.replace("_", " ").title()
-                        disease_name = f"{crop_hint} {cand_clean} (Suspected)"
-                        explanation = f"Leaf pattern suggests early signs of {cand_clean}. However, AI confidence ({round(conf * 100)}%) is below 70% threshold. Sent to Agricultural Expert for review."
+                # If model returned Unable to Determine, do NOT fabricate a disease unless specifically force_low_confidence is requested
+                if disease_name == "Unable to Determine":
+                    if force_low_confidence and top_preds:
+                        top_class = top_preds[0]["class_name"]
+                        if "___" in top_class:
+                            _, dis_cand = top_class.split("___", 1)
+                            cand_clean = dis_cand.replace("_", " ").title()
+                            disease_name = f"{crop_hint} {cand_clean} (Suspected)"
+                            explanation = f"Leaf pattern suggests early signs of {cand_clean}. AI confidence ({round(conf * 100)}%) is below 70% threshold. Sent to Agricultural Expert for review."
+                        else:
+                            explanation = "Low confidence observation submitted for expert review."
                     else:
-                        explanation = res.get("explanation", "Leaf pattern could not be classified with certainty.")
+                        # Genuine non-leaf or unclassifiable image
+                        return {
+                            "crop": crop_hint,
+                            "disease": "Invalid Image: Not a Crop Leaf",
+                            "confidence": 0.0,
+                            "severity": "Invalid",
+                            "explanation": "The uploaded photo does not match any recognized crop foliage in our trained agricultural models.",
+                            "recommendations": "Please take a clear, well-lit photo of an actual crop leaf (e.g. Tomato, Potato, Corn, Cotton, Apple) on a clean background.",
+                            "prevention": "Ensure good natural lighting and focus exclusively on the leaf blade.",
+                            "model_used": "FasalRakshak Image Quality & Leaf Guard",
+                            "requires_expert_review": False,
+                            "expert_status": "NOT_REQUIRED",
+                            "is_mismatch": False,
+                            "is_not_leaf": True,
+                            "suggested_crop": None,
+                            "top_predictions": []
+                        }
                 else:
                     explanation = res.get("explanation", "AI analyzed leaf pattern via EfficientNet-B0 feature maps.")
 

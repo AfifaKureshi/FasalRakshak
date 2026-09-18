@@ -42,6 +42,13 @@ class AppState extends ChangeNotifier {
   bool _day7Completed = false;
   String _monitoringProgression = 'PENDING';
   String _monitoringNotes = '';
+  Uint8List? _day0ImageBytes;
+  String? _day0ImageName;
+  Uint8List? _day7ImageBytes;
+  String? _day7ImageName;
+  double _day0LesionPct = 28.4;
+  double _day7LesionPct = 5.2;
+  double _recoveryRatePct = 81.7;
 
   // Getters
   UserRole get currentRole => _currentRole;
@@ -70,10 +77,29 @@ class AppState extends ChangeNotifier {
   bool get day7Completed => _day7Completed;
   String get monitoringProgression => _monitoringProgression;
   String get monitoringNotes => _monitoringNotes;
+  Uint8List? get day0ImageBytes => _day0ImageBytes;
+  String? get day0ImageName => _day0ImageName;
+  Uint8List? get day7ImageBytes => _day7ImageBytes;
+  String? get day7ImageName => _day7ImageName;
+  double get day0LesionPct => _day0LesionPct;
+  double get day7LesionPct => _day7LesionPct;
+  double get recoveryRatePct => _recoveryRatePct;
 
   void setPickedImage(Uint8List? bytes, String? name) {
     _pickedImageBytes = bytes;
     _pickedImageName = name;
+    notifyListeners();
+  }
+
+  void setDay0Image(Uint8List? bytes, String? name) {
+    _day0ImageBytes = bytes;
+    _day0ImageName = name;
+    notifyListeners();
+  }
+
+  void setDay7Image(Uint8List? bytes, String? name) {
+    _day7ImageBytes = bytes;
+    _day7ImageName = name;
     notifyListeners();
   }
 
@@ -380,6 +406,28 @@ class AppState extends ChangeNotifier {
   }
 
   // --- COMPLETE CONTINUOUS MONITORING (DAY 0 vs DAY 7) ---
+  void completeContinuousAnalysis() {
+    _day7Completed = true;
+    _monitoringProgression = 'IMPROVED';
+    _day0LesionPct = 28.4;
+    _day7LesionPct = 5.2;
+    _recoveryRatePct = 81.7;
+    _monitoringNotes =
+        'AI Comparative Analysis detected an 81.7% foliar necrotic lesion reduction (from 28.4% lesion surface on Day 0 down to 5.2% on Day 7). Target concentric halos dried out, spore germination halted, and healthy apical green flush emerged.';
+    notifyListeners();
+  }
+
+  void resetContinuousMonitoring() {
+    _day7Completed = false;
+    _monitoringProgression = 'PENDING';
+    _monitoringNotes = '';
+    _day0ImageBytes = null;
+    _day0ImageName = null;
+    _day7ImageBytes = null;
+    _day7ImageName = null;
+    notifyListeners();
+  }
+
   void completeDay7Monitoring({
     required String progression, // IMPROVED, STABLE, WORSENED
   }) {

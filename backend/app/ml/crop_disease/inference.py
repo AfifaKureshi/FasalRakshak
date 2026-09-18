@@ -117,7 +117,7 @@ class DiseasePredictor:
             global_crop = class_crop(PLANTVILLAGE_CLASSES[scores["global_index"]])
             if global_crop != crop and scores["global_confidence"] >= .75 and scores["crop_mass"] < .25:
                 raise ImageValidationError("crop_mismatch", "The image may not match the selected crop. Check your crop selection or upload another leaf photo.", suggested_crop=global_crop)
-            if scores["global_confidence"] < float(os.getenv("MODEL_MIN_GLOBAL_CONF", "0.20")):
+            if scores["global_confidence"] < float(os.getenv("MODEL_MIN_GLOBAL_CONF", "0.35")):
                 raise ImageValidationError("non_leaf_suspected", "The image does not contain recognizable crop foliage. Please upload a clear photo of a single crop leaf.")
             label = PLANTVILLAGE_CLASSES[scores["class_index"]]
             reasons = list(quality["warnings"])

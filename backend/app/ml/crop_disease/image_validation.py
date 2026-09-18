@@ -87,19 +87,25 @@ def inspect_image(image):
         if mean_brightness > 248:
             raise ImageValidationError("too_bright", "The photo is overexposed. Avoid flash and retake it.")
 
-        # Plant foliage color mask (greens, yellow-greens, chlorotic yellow, brown lesions)
+        # Plant foliage color mask:
+        # 1. Excess Green Index (ExG = 2G - R - B) identifies true foliage chlorophyllic pigments:
         r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
-        is_green = (g > (b + 8)) & (g > (r - 30)) & (g > 35)
-        is_yellow = (r > 70) & (g > 65) & (b < ((r + g) / 2.0 - 15))
-        is_brown = (r > 50) & (g > 35) & (b < 85) & (r > (b + 12))
+        exg = 2.0 * g - r - b
+        is_green = (exg > 12.0) & (g > 38.0)
+        # 2. Chlorotic foliar yellow (e.g. mosaic or deficiency): high R & G, low B
+        is_yellow = (r > 80.0) & (g > 80.0) & (b < 85.0) & (np.abs(r - g) < 45.0) & ((r + g) > 2.2 * b)
+        # 3. Necrotic lesions on foliage (dark brown/tan spots)
+        is_lesion_brown = (r > 45.0) & (g > 30.0) & (b < 75.0) & (r > (b + 18.0)) & (g < 140.0)
 
-        plant_mask = is_green | is_yellow | is_brown
+        foliage_core = is_green | is_yellow
+        plant_mask = foliage_core | is_lesion_brown
         plant_fraction = float(np.mean(plant_mask))
+        green_fraction = float(np.mean(foliage_core))
 
-        if plant_fraction < float(os.getenv("LEAF_COLOR_MIN_FRACTION", "0.07")):
+        if plant_fraction < float(os.getenv("LEAF_COLOR_MIN_FRACTION", "0.15")) or green_fraction < 0.08:
             raise ImageValidationError(
                 "non_leaf_suspected",
-                "The uploaded image does not appear to be a crop leaf. Please upload a clear photo of a plant leaf."
+                "The uploaded image does not contain recognizable crop leaf foliage. Please upload a clear photo of a plant leaf."
             )
 
         return {
@@ -137,7 +143,7 @@ def inspect_image(image):
         raise ImageValidationError("too_dark", "The photo is too dark. Retake it in natural light.")
     if np.mean(gray_small > 245) > .9:
         raise ImageValidationError("too_bright", "The photo is overexposed. Avoid flash and retake it.")
-    if plant_fraction < float(os.getenv("LEAF_COLOR_MIN_FRACTION", "0.06")):
+    if plant_fraction < float(os.getenv("LEAF_COLOR_MIN_FRACTION", "0.15")):
         raise ImageValidationError("non_leaf_suspected", "A crop leaf could not be identified. Place one leaf on a plain background and retake the photo.")
 
     lap = cv2.Laplacian(gray_small, cv2.CV_32F)

@@ -18,7 +18,7 @@ class CheckCropHealthScreen extends StatefulWidget {
 
 class _CheckCropHealthScreenState extends State<CheckCropHealthScreen> {
   String _selectedCrop = 'Tomato';
-  String _selectedSampleName = 'Tomato Leaf Sample';
+  String? _selectedSampleName;
   bool _isAnalyzing = false;
   bool _forceLowConfidence = false;
   final ImagePicker _picker = ImagePicker();
@@ -53,37 +53,10 @@ class _CheckCropHealthScreenState extends State<CheckCropHealthScreen> {
     final appState = Provider.of<AppState>(context, listen: false);
     appState.setPickedImage(null, null);
     setState(() {
-      _selectedSampleName = 'Tomato Leaf Sample';
+      _selectedSampleName = null;
       _forceLowConfidence = false;
     });
   }
-
-  final List<Map<String, dynamic>> _quickSamplePresets = [
-    {
-      'title': 'Tomato Blight (Spot Pattern)',
-      'crop': 'Tomato',
-      'lowConf': false,
-      'desc': 'Brown concentric spots on leaf blade',
-    },
-    {
-      'title': 'Tomato Blight (Doctor Review Case)',
-      'crop': 'Tomato',
-      'lowConf': true,
-      'desc': 'Early stage (54% confidence) -> Sent to Agri Doctor',
-    },
-    {
-      'title': 'Potato Early Blight',
-      'crop': 'Potato',
-      'lowConf': false,
-      'desc': 'Foliar dark brown lesions on potato leaf',
-    },
-    {
-      'title': 'Healthy Green Leaf',
-      'crop': 'Tomato',
-      'lowConf': false,
-      'desc': 'Clean vibrant foliage with zero disease',
-    },
-  ];
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -122,8 +95,18 @@ class _CheckCropHealthScreenState extends State<CheckCropHealthScreen> {
   }
 
   void _runAnalysis() async {
-    setState(() => _isAnalyzing = true);
     final appState = Provider.of<AppState>(context, listen: false);
+    if (appState.pickedImageBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please capture or select a leaf photo first.'),
+          backgroundColor: AppColors.dangerRed,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isAnalyzing = true);
 
     await appState.runAnalysis(
       cropHint: _selectedCrop,
@@ -269,7 +252,7 @@ class _CheckCropHealthScreenState extends State<CheckCropHealthScreen> {
                                         const SizedBox(width: 6),
                                         Expanded(
                                           child: Text(
-                                            _selectedSampleName,
+                                            _selectedSampleName ?? appState.pickedImageName ?? 'Leaf Image Captured',
                                             style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                                             overflow: TextOverflow.ellipsis,
                                           ),
@@ -333,89 +316,77 @@ class _CheckCropHealthScreenState extends State<CheckCropHealthScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Quick Demo Samples Card (For Fast Demo & Testing)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+            // AI Auto-Detection Information Card (No disease selection required)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.ivory,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.stone),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.auto_awesome, color: AppColors.harvestGold, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Automated AI Foliar Diagnosis',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.charcoal),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Farmers do not need to guess or select diseases. Simply photograph or upload a leaf photo; our PyTorch EfficientNet model scans foliar lesions and predicts disease and severity automatically.',
+                    style: TextStyle(fontSize: 11.5, color: AppColors.muted, height: 1.4),
+                  ),
+                  const SizedBox(height: 10),
+                  // Test toggle for Hackathon Judges to demo doctor review flow
+                  InkWell(
+                    onTap: () => setState(() => _forceLowConfidence = !_forceLowConfidence),
+                    child: Row(
                       children: [
-                        const Icon(Icons.science_outlined, color: AppColors.primaryGreen, size: 18),
+                        Icon(
+                          _forceLowConfidence ? Icons.check_box : Icons.check_box_outline_blank,
+                          size: 18,
+                          color: _forceLowConfidence ? AppColors.harvestGold : AppColors.muted,
+                        ),
                         const SizedBox(width: 8),
-                        Text(
-                          loc.tr('or_test_sample'),
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.charcoal),
+                        const Expanded(
+                          child: Text(
+                            'Simulate Low AI Confidence (<70%) -> Triggers Doctor Review',
+                            style: TextStyle(fontSize: 11, color: AppColors.charcoal),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    ..._quickSamplePresets.map((preset) {
-                      final isSelected = _selectedSampleName == preset['title'];
-                      return InkWell(
-                        onTap: () {
-                          setState(() {
-                            _selectedSampleName = preset['title'];
-                            _selectedCrop = preset['crop'];
-                            _forceLowConfidence = preset['lowConf'];
-                          });
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: isSelected ? AppColors.lightMint : AppColors.background,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isSelected ? AppColors.primaryGreen : AppColors.border,
-                              width: isSelected ? 1.8 : 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-                                size: 18,
-                                color: isSelected ? AppColors.primaryGreen : Colors.grey,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      preset['title'],
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: isSelected ? AppColors.primaryGreen : AppColors.charcoal,
-                                      ),
-                                    ),
-                                    Text(
-                                      preset['desc'],
-                                      style: const TextStyle(fontSize: 11, color: AppColors.muted),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
 
             // Main Analyze Button
             ElevatedButton(
-              onPressed: _isAnalyzing ? null : _runAnalysis,
+              onPressed: _isAnalyzing
+                  ? null
+                  : (appState.pickedImageBytes == null
+                      ? () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please capture or choose a leaf photo above first.'),
+                              backgroundColor: AppColors.warning,
+                            ),
+                          );
+                        }
+                      : _runAnalysis),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: AppColors.primaryGreen,
+                backgroundColor: appState.pickedImageBytes == null
+                    ? Colors.grey.shade400
+                    : AppColors.primaryGreen,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
               child: _isAnalyzing
@@ -439,11 +410,18 @@ class _CheckCropHealthScreenState extends State<CheckCropHealthScreen> {
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.check_circle_outline, size: 20),
+                        Icon(
+                          appState.pickedImageBytes == null
+                              ? Icons.camera_alt_outlined
+                              : Icons.check_circle_outline,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Text(
-                          loc.tr('check_crop_health'),
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          appState.pickedImageBytes == null
+                              ? 'Take or Upload Leaf Photo First'
+                              : loc.tr('check_crop_health'),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
