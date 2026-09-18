@@ -29,24 +29,26 @@ class _SplashScreenState extends State<SplashScreen> {
           children: [
             // Agricultural Logo Container
             Container(
-              width: 96,
-              height: 96,
+              width: 110,
+              height: 110,
               decoration: BoxDecoration(
-                color: AppColors.forest,
+                color: Colors.white,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.softLime.withOpacity(0.5), width: 2),
+                border: Border.all(color: AppColors.softLime, width: 3),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withOpacity(0.25),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.eco,
-                size: 52,
-                color: AppColors.softLime,
+              padding: const EdgeInsets.all(8),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/icons/app_logo.png',
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
             const SizedBox(height: 28),

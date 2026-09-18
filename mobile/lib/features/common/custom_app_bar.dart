@@ -28,8 +28,34 @@ class FasalAppBar extends StatelessWidget implements PreferredSizeWidget {
     final appState = Provider.of<AppState>(context);
     final syncService = Provider.of<SyncService>(context);
     final loc = AppLocalizations.of(context);
+    final canPop = Navigator.canPop(context);
 
     return AppBar(
+      leading: canPop
+          ? const BackButton(color: Colors.white)
+          : Padding(
+              padding: const EdgeInsets.only(left: 12, top: 6, bottom: 6, right: 2),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.12),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(2),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/icons/app_logo.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
